@@ -14,6 +14,8 @@ FILE_NAME:str='PhishingData.csv'
 TRAIN_FILE_NAME:str='train.csv'
 TEST_FILE_NAME:str='test.csv'
 
+SCHEMA_FILE_PATH = os.path.join("data_schema", "schema.yaml")# Path to the schema file for data validation create data_schema directory and add schema.yaml file
+
 '''
 Data ingestion related constant starts with DATA_INGESTION_VAR_NAME
 '''
@@ -24,3 +26,11 @@ DATA_INGESTION_FEATURE_STORE_DIRECTORY:str='feature_store'
 DATA_INGESTION_INGESTED_DIRECTORY:str='ingested_data'
 DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO:float=0.2
 
+'''
+Data validation related constant starts with DATA_VALIDATION_VAR_NAME
+'''
+DATA_VALIDATION_DIR_NAME:str='data_validation'
+DATA_VALIDATION_VALID_DIR:str='validated'
+DATA_VALIDATION_INVALID_DIR:str='invalid'
+DATA_VALIDATION_DRIFT_REPORT_DIR:str='drift_report'
+DATA_VALIDATION_DRIFT_REPORT_FILE_NAME:str='drift_report.yaml'
