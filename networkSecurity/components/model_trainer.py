@@ -21,6 +21,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier
 )
+import mlflow
 
 class ModelTrainer:
     def __init__(self, model_trainer_config: ModelTrainerConfig,data_transformation_artifact: DataTransformationArtifact):
@@ -30,36 +31,31 @@ class ModelTrainer:
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
+    def track_mlflow(self, model, classification_train_metric, X_sample):
+        with mlflow.start_run():
+            mlflow.log_metric("f1_score", classification_train_metric.f1_score)
+            mlflow.log_metric("precision", classification_train_metric.precision)
+            mlflow.log_metric("recall", classification_train_metric.recall)
+            mlflow.sklearn.log_model(model, name="model", input_example=X_sample)
+
     def train_model(self, X_train, y_train, X_test, y_test):
         try:
             models = {
-                "Logistic Regression": LogisticRegression(),
+                "Logistic Regression": LogisticRegression(class_weight='balanced', max_iter=500),
                 "KNN": KNeighborsClassifier(),
-                "Decision Tree": DecisionTreeClassifier(),
-                "Random Forest": RandomForestClassifier(verbose=1),
+                "Decision Tree": DecisionTreeClassifier(class_weight='balanced'),
+                "Random Forest": RandomForestClassifier(verbose=1, class_weight='balanced', max_depth=10),
                 "Gradient Boosting": GradientBoostingClassifier(),
                 "AdaBoost": AdaBoostClassifier()
             }
 
             params = {
                 "Logistic Regression": {},
-                "KNN": {
-                    'n_neighbors': [3, 5, 7, 9, 11]
-                },
-                "Decision Tree": {
-                    'criterion': ['gini', 'entropy','log_loss']
-                },
-                "Random Forest": {
-                    'n_estimators': [8,16,32,64,128,256]
-                },
-                "Gradient Boosting": {
-                    'n_estimators': [8,16,32,64,128,256],
-                    'learning_rate': [0.01, 0.1, 1]
-                },
-                "AdaBoost": {
-                    'n_estimators': [8,16,32,64,128,256],
-                    'learning_rate': [0.01, 0.1, 1]
-                }
+                "KNN": {'n_neighbors': [3, 5, 7]},
+                "Decision Tree": {'criterion': ['gini', 'entropy'], 'max_depth': [5, 10, None]},
+                "Random Forest": {'n_estimators': [50, 100], 'max_depth': [5, 10]},
+                "Gradient Boosting": {'n_estimators': [50, 100], 'learning_rate': [0.05, 0.1]},
+                "AdaBoost": {'n_estimators': [50, 100], 'learning_rate': [0.05, 0.1]}
             }
             model_report: dict = evaluate_models(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test, models=models, params=params)
 
@@ -75,10 +71,14 @@ class ModelTrainer:
             classification_train_metric = get_classification_score(y_true=y_train, y_pred=y_train_pred)
             
             # Track the mlflow
+            self.track_mlflow(best_model,classification_train_metric, X_sample=X_train[:1])
 
 
             y_test_pred = best_model.predict(X_test)
             classification_test_metric = get_classification_score(y_true=y_test, y_pred=y_test_pred)
+
+            # Track the mlflow
+            self.track_mlflow(best_model,classification_test_metric, X_sample=X_test[:1])
 
             preprocesser = load_object(file_path=self.data_transformation_artifact.transformed_object_file_path)
             model_dir_path = os.path.dirname(self.model_trainer_config.trained_model_file_path)
